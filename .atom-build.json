@@ -1,0 +1,15 @@
+{
+  "name": "default",
+  "cmd": "love",
+  "args": [ "." ],
+  "sh": false,
+  "cwd": "{PROJECT_PATH}",
+  "targets": {
+     "windows": {
+      "cmd": "bin/love",
+      "args": [ "." ],
+      "sh": false,
+      "cwd": "{PROJECT_PATH}"
+    }
+  }
+}
