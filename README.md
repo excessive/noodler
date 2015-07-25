@@ -14,6 +14,8 @@ on Lua 5.1+ as long as you don't call draw on them.
 
 <a href="https://www.irccloud.com/invite?channel=%23excessive&amp;hostname=irc.oftc.net&amp;port=6697&amp;ssl=1" target="_blank"><img src="https://www.irccloud.com/invite-svg?channel=%23excessive&amp;hostname=irc.oftc.net&amp;port=6697&amp;ssl=1"  height="18"></a>
 
+LÖVE 0.10 nightlies for Windows can be found [here](https://ci.appveyor.com/project/AlexSzpakowski/love/build/artifacts).
+
 ## Defining new nodes
 ```lua
 local cpml = require "cpml"
