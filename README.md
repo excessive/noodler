@@ -12,6 +12,8 @@ This project is very early, but should be usable at all times.
 The demo requires LÖVE 0.10 and sRGB support. The node evaluation should run
 on Lua 5.1+ as long as you don't call draw on them.
 
+<a href="https://www.irccloud.com/invite?channel=%23excessive&amp;hostname=irc.oftc.net&amp;port=6697&amp;ssl=1" target="_blank"><img src="https://www.irccloud.com/invite-svg?channel=%23excessive&amp;hostname=irc.oftc.net&amp;port=6697&amp;ssl=1"  height="18"></a>
+
 ## Defining new nodes
 ```lua
 local cpml = require "cpml"
