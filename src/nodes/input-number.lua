@@ -1,8 +1,10 @@
+local file = ...
 local node = require "node"
 local cpml = require "cpml"
 
 local function mk_node(x, y)
 	return node {
+		file    = file,
 		name    = "Number",
 		x       = x,
 		y       = y,

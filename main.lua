@@ -1,12 +1,13 @@
-love.filesystem.setRequirePath(love.filesystem.getRequirePath() .. ";libs/?.lua;libs/?/init.lua;libs/?/?.lua")
+love.filesystem.setRequirePath(love.filesystem.getRequirePath() .. ";libs/?.lua;libs/?/init.lua")
 love.filesystem.setRequirePath(love.filesystem.getRequirePath() .. ";src/?.lua;src/?/init.lua")
 
-local cpml = require "cpml"
-local node = require "node"
+local cpml   = require "cpml"
+local node   = require "node"
+local serial = require "serial_nood"
 
 local menu, gui, open_menu = false
 
-local node_list = {}
+node_list = {}
 local selected       = false
 local grabbed        = false
 local new_connection = false
@@ -29,7 +30,7 @@ function love.load(args)
 	local items = {}
 	for i, file in ipairs(love.filesystem.getDirectoryItems("src/nodes")) do
 		xpcall(function()
-			local item = love.filesystem.load("src/nodes/" .. file)()
+			local item = love.filesystem.load("src/nodes/" .. file)(string.sub(file, 1, -5))
 			items[item.category] = items[item.category] or {}
 			table.insert(items[item.category], item)
 		end, print)
@@ -69,6 +70,31 @@ function love.load(args)
 
 		gui.core.draw()
 	end
+
+	--[[table.insert(node_list, node {
+		name         = "Entity",
+		x            = 200,
+		y            = 50,
+		invulnerable = true,
+		inputs = {
+			{
+				label = "Position",
+				type  = "vector"
+			}, {
+				label = "Color",
+				type  = "color"
+			}
+		},
+		values = {
+			cpml.vec3(0, 0, 0),
+			cpml.color(255, 255, 255, 255)
+		},
+		evaluate = function(self, target)
+			target.position = self.values[1]
+			target.color    = self.values[2]
+		end,
+		size = cpml.vec2(200, 0)
+	})--]]
 end
 
 function love.keypressed(k, s, rep)
@@ -103,6 +129,19 @@ function love.keypressed(k, s, rep)
 		grabbed  = new
 		table.insert(node_list, new)
 	end
+
+	-- TEST SERIALIZATION
+	if k == "q" then
+		debug_serial = serial.encode(node_list)
+		node_list    = {}
+	end
+
+	if k == "e" then
+		node_list    = serial.decode(debug_serial)
+		debug_serial = nil
+	end
+	-- END TEST
+
 	gui.keyboard.pressed(k)
 end
 
@@ -186,6 +225,8 @@ function love.update(dt)
 			break
 		end
 	end
+
+	require("lovebird").update()
 end
 
 function love.mousemoved(x, y, dx, dy)

@@ -1,5 +1,6 @@
 local cpml = require "cpml"
 local lume = require "lume"
+local utils = require "utils"
 
 local noodle = {}
 noodle.__index = noodle
@@ -7,6 +8,7 @@ noodle.__index = noodle
 local function new(params)
 	params = params or {}
 	local t = {
+		file            = params.file or "generic",
 		name            = params.name or "Node",
 		position        = cpml.vec2(params.x, params.y),
 		inputs          = params.inputs or {},

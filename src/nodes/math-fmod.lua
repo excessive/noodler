@@ -1,7 +1,9 @@
+local file = ...
 local node = require "node"
 
 local function mk_node(x, y)
 	return node {
+		file    = file,
 		name    = "Modulo",
 		x       = x,
 		y       = y,
