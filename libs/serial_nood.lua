@@ -82,14 +82,13 @@ function noodler.decode(encoded)
 		local val = decoded.values[k]
 
 		-- Create default node of given type
-		local item = items[nod[1]].new()
-		item.x     = pos[1]
-		item.y     = pos[2]
-		local n    = node(item)
+		local item     = items[nod[1]].new()
+		item.x, item.y = pos[1], pos[2]
+		local n        = node(item)
 
 		-- Assign node values
-		for i, v in ipairs(val) do
-			n.values[i] = v
+		for socket, value in ipairs(val) do
+			n:set_value(socket, value)
 		end
 
 		-- Insert node into list

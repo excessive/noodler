@@ -21,6 +21,7 @@ local function mk_node(x, y)
 			-- print(self.values[1])
 		end,
 		display = function(self)
+			assert(getmetatable(cpml.color()) == getmetatable(self.values[1]))
 			love.graphics.setColor(love.math.gammaToLinear(self.values[1]))
 			love.graphics.rectangle("fill", 0, 0, self.size.x, self.size.y)
 		end,

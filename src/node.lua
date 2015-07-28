@@ -72,6 +72,22 @@ function noodle:reset_defaults()
 	end
 end
 
+function noodle:set_value(socket, value)
+	if type(value) == "table" then
+		for k, v in pairs(value) do
+			self.values[socket][k] = v
+		end
+	else
+		self.values[socket] = value
+	end
+end
+
+function noodle:set_values(values)
+	for socket, value in ipairs(values) do
+		self:set_value(socket, value)
+	end
+end
+
 function noodle:connect(other, from, to)
 	assert(is_node(other), "Invalid node")
 	assert(self.outputs[from], "Invalid output")
