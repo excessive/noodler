@@ -1,6 +1,5 @@
 local cpml = require "cpml"
 local lume = require "lume"
-local utils = require "utils"
 
 local noodle = {}
 noodle.__index = noodle

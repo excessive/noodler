@@ -225,8 +225,6 @@ function love.update(dt)
 			break
 		end
 	end
-
-	require("lovebird").update()
 end
 
 function love.mousemoved(x, y, dx, dy)
