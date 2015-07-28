@@ -346,9 +346,10 @@ function noodle:draw()
 	end
 end
 
-function noodle:check_hit(x, y)
+function noodle:check_hit(x, y, offset)
+	offset = offset or cpml.vec2(0, 0)
 	local test = cpml.intersect.point_AABB
-	local pos  = cpml.vec3(x, y)
+	local pos  = cpml.vec3(x - offset.x, y - offset.y)
 
 	-- highlight if we're dead on
 	self.hit = test(pos, {

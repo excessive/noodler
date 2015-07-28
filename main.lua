@@ -5,12 +5,13 @@ local cpml   = require "cpml"
 local node   = require "node"
 local serial = require "serial_nood"
 
-local menu, gui, open_menu = false
-
-node_list = {}
+local node_list = {}
 local selected       = false
 local grabbed        = false
 local new_connection = false
+
+local offset, panning = cpml.vec2(0, 0), false
+local lf, menu
 
 function love.load(args)
 	love.window.setMode(1280, 720, {
@@ -21,8 +22,9 @@ function love.load(args)
 		vsync     = true,
 	})
 	love.window.setTitle("Noodler")
-	gui = require "quickie"
-	gui.core.style = require "gui-style"
+
+	-- Depends on the window being created first.
+	lf = require "libs.UnekFrames"
 	love.graphics.setFont(love.graphics.newFont("assets/NotoSans-Regular.ttf", 12))
 
 	love.graphics.setBackgroundColor { 40, 40, 40 }
@@ -36,39 +38,37 @@ function love.load(args)
 		end, print)
 	end
 
-	menu = function()
-		local menus = {}
-		for name, category in pairs(items) do
-			for _, item in ipairs(category) do
-				menus[name] = menus[name] or {}
-				table.insert(menus[name], item)
-			end
+	local panel = assert(lf.Create("panel"))
+	function panel:draw()
+		for k, v in ipairs(self.children) do
+			v:draw()
 		end
-		gui.group.default.size[1] = 150
-		gui.group.default.size[2] = 30
-		gui.group { grow = "down", pos = { 10, 10 }, spacing = 5, function()
-			for name, category in pairs(menus) do
-				if gui.Button { text = name, size = { 160 } } then
-					open_menu = (open_menu ~= name) and name or false
-				end
-				if open_menu == name then
-					gui.group.push { spacing = 0, pos = { 5 }, grow = "down" }
-					for _, item in ipairs(category) do
-						if gui.Button { text = item.name } then
-							grabbed = item.new(love.mouse.getPosition())
-							selected = grabbed
-							love.mouse.setGrabbed(true)
-							grabbed.selected = true
-							grabbed:update()
-							table.insert(node_list, grabbed)
-						end
-					end
-					gui.group.pop {}
-				end
-			end
-		end }
+	end
 
-		gui.core.draw()
+	panel:SetSize(love.graphics.getDimensions())
+	menu = lf.Create("menu", panel)
+	menu:SetVisible(false)
+
+	local menus = {}
+	for name, category in pairs(items) do
+		for _, item in ipairs(category) do
+			menus[name] = menus[name] or {}
+			table.insert(menus[name], item)
+		end
+	end
+	for name, category in pairs(menus) do
+		local sub = lf.Create("menu")
+		for _, item in ipairs(category) do
+			sub:AddOption(item.name, false, function()
+				grabbed = item.new(love.mouse.getPosition())
+				selected = grabbed
+				love.mouse.setGrabbed(true)
+				grabbed.selected = true
+				grabbed:update()
+				table.insert(node_list, grabbed)
+			end)
+		end
+		menu:AddSubMenu(name, false, sub)
 	end
 
 	--[[table.insert(node_list, node {
@@ -142,23 +142,28 @@ function love.keypressed(k, s, rep)
 	end
 	-- END TEST
 
-	gui.keyboard.pressed(k)
+	if k == "home" then
+		offset.x = 0
+		offset.y = 0
+	end
+
+	lf.keypressed(k)
 end
 
--- function love.keyreleased(k)
+function love.keyreleased(k)
+	lf.keyreleased(k)
+end
 --
--- end
---
--- function love.textinput(t)
---
--- end
+function love.textinput(t)
+	lf.textinput(t)
+end
 
 function love.mousepressed(x, y, button)
 	if button == 1 then
 		if not grabbed and not new_connection then
 			selected = false
 			for i, v in ipairs(node_list) do
-				v:check_hit(x, y)
+				v:check_hit(x, y, offset)
 				if v.hit_connector and v.hit_connector.output then
 					new_connection = v.hit_connector
 				elseif v.hit and not v.hit_connector then
@@ -177,12 +182,15 @@ function love.mousepressed(x, y, button)
 		end
 	end
 	if button == 2 then
-		-- menu:SetPos(x, y)
-		-- menu:SetVisible(true)
+		menu:SetPos(x, y)
+		menu:SetVisible(true)
 	end
-	-- if button <= 5 then
-		-- lf.mousepressed(x, y, ({"l", "r", "m", "x2", "x3"})[button])
-	-- end
+	if button == 3 then
+		panning = true
+	end
+	if button <= 5 then
+		lf.mousepressed(x, y, button)
+	end
 end
 
 function love.mousereleased(x, y, button)
@@ -193,7 +201,7 @@ function love.mousereleased(x, y, button)
 		end
 		if new_connection then
 			for i, v in ipairs(node_list) do
-				v:check_hit(x, y)
+				v:check_hit(x, y, offset)
 				if v.hit_connector and v.hit_connector.input then
 					print("dropped on a connector!")
 					print(new_connection.socket, v.hit_connector.socket)
@@ -205,16 +213,19 @@ function love.mousereleased(x, y, button)
 	end
 	if button == 2 then
 		for i, v in ipairs(node_list) do
-			v:check_hit(x, y)
+			v:check_hit(x, y, offset)
 			if v.hit_connector and v.hit_connector.input then
 				v:disconnect(v.hit_connector.socket)
 				break
 			end
 		end
 	end
-	-- if button <= 5 then
-		-- lf.mousereleased(x, y, ({"l", "r", "m", "x1", "x2"})[button])
-	-- end
+	if button == 3 then
+		panning = false
+	end
+	if button <= 5 then
+		lf.mousereleased(x, y, button)
+	end
 end
 
 function love.update(dt)
@@ -225,20 +236,28 @@ function love.update(dt)
 			break
 		end
 	end
+	lf.update(dt)
 end
 
 function love.mousemoved(x, y, dx, dy)
 	for i, v in ipairs(node_list) do
-		v:check_hit(x, y)
+		v:check_hit(x, y, offset)
 	end
 	if grabbed then
 		grabbed.position = grabbed.position + cpml.vec2(dx, dy)
 		grabbed:update()
 	end
+	if panning then
+		offset.x = offset.x + dx
+		offset.y = offset.y + dy
+	end
 end
 
 function love.draw()
 	local w, h = love.graphics.getDimensions()
+
+	love.graphics.push()
+	love.graphics.translate(offset:unpack())
 
 	-- background grid
 	local grid_size = 32
@@ -266,10 +285,12 @@ function love.draw()
 	node.draw_nodes(node_list)
 
 	if new_connection then
-		node.draw_noodle(new_connection.position, cpml.vec2(love.mouse.getPosition()), new_connection.color)
+		node.draw_noodle(new_connection.position, cpml.vec2(love.mouse.getPosition()) - offset, new_connection.color)
 	end
 
-	menu()
+	love.graphics.pop()
+
+	lf.draw()
 end
 
 -- Exactly the same as normal, but only renders when an event was handled.
