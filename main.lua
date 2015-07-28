@@ -60,7 +60,8 @@ function love.load(args)
 		local sub = lf.Create("menu")
 		for _, item in ipairs(category) do
 			sub:AddOption(item.name, false, function()
-				grabbed = item.new(love.mouse.getPosition())
+				local pos = cpml.vec2(love.mouse.getPosition())
+				grabbed = item.new((pos - offset):unpack())
 				selected = grabbed
 				love.mouse.setGrabbed(true)
 				grabbed.selected = true
