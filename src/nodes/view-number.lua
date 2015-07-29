@@ -29,7 +29,7 @@ local function mk_node(x, y)
 end
 
 return {
-	name     = "Number View",
-	category = "Output",
+	name     = "Number",
+	category = "View",
 	new      = mk_node
 }

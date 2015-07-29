@@ -29,7 +29,7 @@ local function mk_node(x, y)
 end
 
 return {
-	name     = "Vector View",
-	category = "Output",
+	name     = "Vector",
+	category = "View",
 	new      = mk_node
 }

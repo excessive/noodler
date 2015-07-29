@@ -30,7 +30,7 @@ local function mk_node(x, y)
 end
 
 return {
-	name     = "Color View",
-	category = "Output",
+	name     = "Color",
+	category = "View",
 	new      = mk_node
 }
