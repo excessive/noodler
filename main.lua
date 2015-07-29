@@ -1,11 +1,12 @@
 love.filesystem.setRequirePath(love.filesystem.getRequirePath() .. ";libs/?.lua;libs/?/init.lua")
 love.filesystem.setRequirePath(love.filesystem.getRequirePath() .. ";src/?.lua;src/?/init.lua")
 
-local cpml   = require "cpml"
-local node   = require "node"
-local serial = require "serial_nood"
+local cpml     = require "cpml"
+local node     = require "node"
+local serial   = require "serial_nood"
+local editgrid = require "editgrid"
 
-local node_list = {}
+local node_list      = {}
 local selected       = false
 local grabbed        = false
 local new_connection = false
@@ -72,30 +73,9 @@ function love.load(args)
 		menu:AddSubMenu(name, false, sub)
 	end
 
-	--[[table.insert(node_list, node {
-		name         = "Entity",
-		x            = 200,
-		y            = 50,
-		invulnerable = true,
-		inputs = {
-			{
-				label = "Position",
-				type  = "vector"
-			}, {
-				label = "Color",
-				type  = "color"
-			}
-		},
-		values = {
-			cpml.vec3(0, 0, 0),
-			cpml.color(255, 255, 255, 255)
-		},
-		evaluate = function(self, target)
-			target.position = self.values[1]
-			target.color    = self.values[2]
-		end,
-		size = cpml.vec2(200, 0)
-	})--]]
+	local w, h = love.graphics.getDimensions()
+	offset.x = w / 2
+	offset.y = h / 2
 end
 
 function love.keypressed(k, s, rep)
@@ -144,8 +124,9 @@ function love.keypressed(k, s, rep)
 	-- END TEST
 
 	if k == "home" then
-		offset.x = 0
-		offset.y = 0
+		local w, h = love.graphics.getDimensions()
+		offset.x = w / 2
+		offset.y = h / 2
 	end
 
 	lf.keypressed(k)
@@ -257,31 +238,24 @@ end
 function love.draw()
 	local w, h = love.graphics.getDimensions()
 
+	-- background grid
+	editgrid.draw({
+		x  = -offset.x + w / 2,
+		y  = -offset.y + h / 2,
+		sw = w,
+		sh = h
+	}, {
+		size = 50,
+		subdivisions = 5,
+		color = { 20, 20, 20 },
+		xColor = { 255, 0, 0 },
+		yColor = { 0, 255, 0 },
+		fadeFactor = 1.5,
+		textFadeFactor = 0.75,
+	})
+
 	love.graphics.push()
 	love.graphics.translate(offset:unpack())
-
-	-- background grid
-	local grid_size = 32
-	local grid_size_major = 8
-	local grid_fat = 20
-	local grid_thin = 30
-	love.graphics.setLineWidth(0.5)
-	for i = 0, w / grid_size do
-		if i % grid_size_major == 0 then
-			love.graphics.setColor(grid_fat, grid_fat, grid_fat, 255)
-		else
-			love.graphics.setColor(grid_thin, grid_thin, grid_thin, 255)
-		end
-		love.graphics.line(math.floor(i*grid_size), 0, math.floor(i*grid_size), h)
-	end
-	for i = 0, h / grid_size do
-		if i % grid_size_major == 0 then
-			love.graphics.setColor(grid_fat, grid_fat, grid_fat, 255)
-		else
-			love.graphics.setColor(grid_thin, grid_thin, grid_thin, 255)
-		end
-		love.graphics.line(0, math.floor(i*grid_size), w, math.floor(i*grid_size))
-	end
 
 	node.draw_nodes(node_list)
 
