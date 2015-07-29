@@ -32,11 +32,13 @@ function love.load(args)
 
 	local items = {}
 	for i, file in ipairs(love.filesystem.getDirectoryItems("src/nodes")) do
-		xpcall(function()
-			local item = love.filesystem.load("src/nodes/" .. file)(string.sub(file, 1, -5))
-			items[item.category] = items[item.category] or {}
-			table.insert(items[item.category], item)
-		end, print)
+		if file:gmatch("%.lua()")() == string.len(file)+1 then
+			xpcall(function()
+				local item = love.filesystem.load("src/nodes/" .. file)(string.sub(file, 1, -5))
+				items[item.category] = items[item.category] or {}
+				table.insert(items[item.category], item)
+			end, print)
+		end
 	end
 
 	local panel = assert(lf.Create("panel"))
