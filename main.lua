@@ -11,7 +11,7 @@ local selected       = false
 local grabbed        = false
 local new_connection = false
 
-local offset, panning = cpml.vec2(0, 0), false
+local offset, zoom, panning = cpml.vec2(0, 0), 1, false
 local lf, menu
 
 function love.load(args)
@@ -129,12 +129,20 @@ function love.keypressed(k, s, rep)
 		local w, h = love.graphics.getDimensions()
 		offset.x = w / 2
 		offset.y = h / 2
+		zoom = 1
+	end
+
+	if k == "space" then
+		panning = true
 	end
 
 	lf.keypressed(k)
 end
 
 function love.keyreleased(k)
+	if k == "space" then
+		panning = false
+	end
 	lf.keyreleased(k)
 end
 --
@@ -142,8 +150,14 @@ function love.textinput(t)
 	lf.textinput(t)
 end
 
+function love.wheelmoved(x, y)
+	if y ~= 0 then
+		zoom = cpml.utils.clamp(zoom + y / 4, 0.25, 1.0)
+	end
+end
+
 function love.mousepressed(x, y, button)
-	if button == 1 then
+	if button == 1 and zoom == 1 then
 		if not grabbed and not new_connection then
 			selected = false
 			for i, v in ipairs(node_list) do
@@ -183,7 +197,7 @@ function love.mousereleased(x, y, button)
 			grabbed = false
 			love.mouse.setGrabbed(false)
 		end
-		if new_connection then
+		if new_connection and zoom == 1 then
 			for i, v in ipairs(node_list) do
 				v:check_hit(x, y, offset)
 				if v.hit_connector and v.hit_connector.input then
@@ -195,7 +209,7 @@ function love.mousereleased(x, y, button)
 			new_connection = false
 		end
 	end
-	if button == 2 then
+	if button == 2 and zoom == 1 then
 		for i, v in ipairs(node_list) do
 			v:check_hit(x, y, offset)
 			if v.hit_connector and v.hit_connector.input then
@@ -212,6 +226,22 @@ function love.mousereleased(x, y, button)
 	end
 end
 
+function love.mousemoved(x, y, dx, dy)
+	if zoom == 1 then
+		for i, v in ipairs(node_list) do
+			v:check_hit(x, y, offset)
+		end
+	end
+	if grabbed then
+		grabbed.position = grabbed.position + cpml.vec2(dx, dy) * (1/zoom)
+		grabbed:update()
+	end
+	if panning then
+		offset.x = offset.x + dx
+		offset.y = offset.y + dy
+	end
+end
+
 function love.update(dt)
 	for i, v in ipairs(node_list) do
 		if v.needs_eval then
@@ -223,27 +253,14 @@ function love.update(dt)
 	lf.update(dt)
 end
 
-function love.mousemoved(x, y, dx, dy)
-	for i, v in ipairs(node_list) do
-		v:check_hit(x, y, offset)
-	end
-	if grabbed then
-		grabbed.position = grabbed.position + cpml.vec2(dx, dy)
-		grabbed:update()
-	end
-	if panning then
-		offset.x = offset.x + dx
-		offset.y = offset.y + dy
-	end
-end
-
 function love.draw()
 	local w, h = love.graphics.getDimensions()
 
 	-- background grid
 	editgrid.draw({
-		x  = -offset.x + w / 2,
-		y  = -offset.y + h / 2,
+		x  = (-offset.x + w / 2) * (1/zoom),
+		y  = (-offset.y + h / 2) * (1/zoom),
+		zoom = zoom,
 		sw = w,
 		sh = h
 	}, {
@@ -258,6 +275,7 @@ function love.draw()
 
 	love.graphics.push()
 	love.graphics.translate(offset:unpack())
+	love.graphics.scale(zoom, zoom)
 
 	node.draw_nodes(node_list)
 

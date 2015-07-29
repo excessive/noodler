@@ -303,7 +303,6 @@ function noodle:draw()
 	love.graphics.setColor(0, 0, 0, 255)
 	love.graphics.print(self.name, self.position.x + 10, self.position.y + 7)
 
-	love.graphics.setPointSize(point_radius*2)
 	for i, v in ipairs(self.text_cache) do
 		-- Connection points
 		local c = type_to_color(v[1])
@@ -311,7 +310,7 @@ function noodle:draw()
 		local dark = { c[1] * darken, c[2] * darken, c[3] * darken, c[4] }
 		local light = { c[1] * (1+darken), c[2] * (1+darken), c[3] * (1+darken), c[4] }
 		love.graphics.setColor((self.hit_connector and self.hit_connector.socket) == i and light or c)
-		love.graphics.point(v[3] + point_offset.x, v[4] + point_offset.y)
+		love.graphics.circle("fill", v[3] + point_offset.x, v[4] + point_offset.y, point_radius, 32)
 		love.graphics.setColor(dark)
 		love.graphics.circle("line", v[3] + point_offset.x, v[4] + point_offset.y, point_radius, 32)
 
