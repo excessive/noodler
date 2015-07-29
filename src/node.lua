@@ -276,6 +276,9 @@ local point_radius = 5
 function noodle:draw()
 	local ml = require "material-love"
 
+	local old = love.graphics.getLineWidth()
+	love.graphics.setLineWidth(0.5)
+
 	-- background
 	-- sRGB makes these too wimpy...
 	ml.shadow:draw(self.position.x, self.position.y, self.width, self.height, 2)
@@ -344,6 +347,8 @@ function noodle:draw()
 		love.graphics.rectangle("line", self.position.x + 10, self.position.y + self.display_start, self.size.x, self.size.y)
 		love.graphics.setColor(255, 255, 255, 255)
 	end
+
+	love.graphics.setLineWidth(old)
 end
 
 function noodle:check_hit(x, y, offset)
