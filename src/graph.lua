@@ -21,9 +21,20 @@ function graph:connect(from, to)
 		type   = from.type
 	}
 
+	self.connections[to] = wire
 	table.insert(self.connections, wire)
 
 	return wire
+end
+
+local function trace(self, node, depth)
+	print(depth, node.name)
+	for _, plug in ipairs(node.inputs) do
+		local next_wire = self.connections[plug]
+		if next_wire then
+			trace(self, next_wire.input.node, depth + 1)
+		end
+	end
 end
 
 function graph:compile()
@@ -37,6 +48,10 @@ function graph:compile()
 	if #outputs == 0 then
 		print("WARNING: No output nodes!")
 		return
+	end
+
+	for _, node in ipairs(outputs) do
+		trace(self, node, 0)
 	end
 end
 
