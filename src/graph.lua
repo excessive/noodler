@@ -22,7 +22,6 @@ function graph:connect(from, to)
 	}
 
 	self.connections[to] = wire
-	table.insert(self.connections, wire)
 
 	return wire
 end
