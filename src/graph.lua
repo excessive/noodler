@@ -93,7 +93,7 @@ function graph:execute()
 					node.values[wire.output.index] = wire.input.node.computed[wire.input.index]
 				end
 			end
-			node:fn()
+			node:evaluate()
 			if self.debug then
 				for j, v in ipairs(node.computed) do
 					print(j, v)

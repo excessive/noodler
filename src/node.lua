@@ -20,7 +20,7 @@ local function new(params)
 		outputs  = params.outputs or {},
 		defaults = params.defaults or {},
 		computed = {},
-		fn       = params.fn or __NULL__
+		evaluate = params.evaluate or __NULL__
 	}
 	-- node input values
 	if params.values then

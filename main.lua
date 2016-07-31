@@ -24,14 +24,13 @@ local nodes = {
 		)
 	end,
 	value = function(tree, position)
-		local outputs = {
-			plug("Value", "number", 1)
-		}
 		return tree:add(
 			node {
 				name = "Value",
-				outputs = outputs,
-				fn = function(self)
+				outputs = {
+					plug("Value", "number", 1)
+				},
+				evaluate = function(self)
 					self.computed[1] = math.random()
 				end
 			},
@@ -39,25 +38,23 @@ local nodes = {
 		)
 	end,
 	mix = function(tree, position)
-		local inputs = {
-			plug("Factor", "number", 1),
-			plug("Value", "number", 2),
-			plug("Value", "number", 3)
-		}
-		local outputs = {
-			plug("Value", "number", 1)
-		}
 		return tree:add(
 			node {
 				name = "Mix",
-				inputs = inputs,
-				outputs = outputs,
+				inputs = {
+					plug("Factor", "number", 1),
+					plug("Value", "number", 2),
+					plug("Value", "number", 3)
+				},
+				outputs = {
+					plug("Value", "number", 1)
+				},
 				values = {
 					0.5,
 					0.0,
 					1.0
 				},
-				fn = function(self)
+				evaluate = function(self)
 					self.computed[1] = cpml.utils.lerp(
 						self.values[1],
 						self.values[2],
@@ -69,17 +66,16 @@ local nodes = {
 		)
 	end,
 	number_view = function(tree, position)
-		local inputs = {
-			plug("Value", "number", 1)
-		}
 		return tree:add(
 			node {
 				name = "Number View",
-				inputs = inputs,
+				inputs = {
+					plug("Value", "number", 1)
+				},
 				values = {
 					0
 				},
-				fn = function(self)
+				evaluate = function(self)
 					print(self.values[1])
 				end
 			},
