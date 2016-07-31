@@ -3,12 +3,13 @@ local lume = require "lume"
 local plug = {}
 local plug_mt = {}
 
-local function new_plug(name, type)
+local function new_plug(name, type, index, node)
 	local t = {
-		node   = false,
+		node   = node or false, -- filled in by the node tree, usually.
 		uuid   = lume.uuid(),
 		name   = name,
-		type   = type
+		type   = type,          -- data type, not a plug type.
+		index  = assert(index)  -- index into node.values or node.computed
 	}
 	return setmetatable(t, plug_mt)
 end

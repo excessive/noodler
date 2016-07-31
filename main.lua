@@ -15,78 +15,140 @@ function love.load()
 end
 
 local nodes = {
-	note = function(tree)
-		local v = node("Note", {}, {}, {})
-		table.insert(tree, v)
-		return v
+	note = function(tree, position)
+		return tree:add(
+			node {
+				name = "Note"
+			},
+			position
+		)
 	end,
-	value = function(tree)
+	value = function(tree, position)
 		local outputs = {
-			plug("Value", "number")
+			plug("Value", "number", 1)
 		}
-		local v = node("Value", {}, outputs, {})
-		table.insert(tree, v)
-		return v
+		return tree:add(
+			node {
+				name = "Value",
+				outputs = outputs,
+				fn = function(self)
+					self.computed[1] = math.random()
+				end
+			},
+			position
+		)
 	end,
-	mix = function(tree)
+	mix = function(tree, position)
 		local inputs = {
-			plug("Factor", "number"),
-			plug("Value", "number"),
-			plug("Value", "number")
+			plug("Factor", "number", 1),
+			plug("Value", "number", 2),
+			plug("Value", "number", 3)
 		}
 		local outputs = {
-			plug("Value", "number")
+			plug("Value", "number", 1)
 		}
-		local v = node("Mix", inputs, outputs, {})
-		table.insert(tree, v)
-		return v
+		return tree:add(
+			node {
+				name = "Mix",
+				inputs = inputs,
+				outputs = outputs,
+				values = {
+					0.5,
+					0.0,
+					1.0
+				},
+				fn = function(self)
+					self.computed[1] = cpml.utils.lerp(
+						self.values[1],
+						self.values[2],
+						self.values[3]
+					)
+				end
+			},
+			position
+		)
 	end,
-	number_view = function(tree)
+	number_view = function(tree, position)
 		local inputs = {
-			plug("Value", "number")
+			plug("Value", "number", 1)
 		}
-		local v = node("Number View", inputs, {}, {}, function(self)
-			print(self.values[1])
-		end)
-		table.insert(tree, v)
-		return v
+		return tree:add(
+			node {
+				name = "Number View",
+				inputs = inputs,
+				values = {
+					0
+				},
+				fn = function(self)
+					print(self.values[1])
+				end
+			},
+			position
+		)
 	end
 }
 
 local tree = graph()
-local a = nodes.value(tree)
-local b = nodes.mix(tree)
-print(a)
+-- tree.debug = true
 
-local c = nodes.number_view(tree)
-print(c)
+local a = nodes.value(tree, cpml.vec2(-400, -250))
+local b = nodes.value(tree, cpml.vec2(-400,   50))
 
-local wire1 = tree:connect(a:output(1), b:input(1))
-local wire2 = tree:connect(b:output(1), c:input(1))
+local m = nodes.mix(tree, cpml.vec2(-100, -100))
+
+local o = nodes.number_view(tree, cpml.vec2(200, -100))
+
+local wire1 = tree:connect(a.outputs[1], m.inputs[2])
+local wire2 = tree:connect(b.outputs[1], m.inputs[3])
+local wire3 = tree:connect(m.outputs[1], o.inputs[1])
 
 local function dump_wire(wire, tag)
+	if not wire then
+		print(string.format(
+			"BAD WIRE: %s", tag
+		))
+		return
+	end
 	print(string.format(
 		"\n%s\nFROM\t%s\nTO\t%s\nAS\t%s\n",
 		tag,
 		wire.input,
 		wire.output,
-		wire.type
+		wire.input.type
 	))
 end
 
-dump_wire(wire1, "a->b")
-dump_wire(wire2, "b->c")
+if tree.debug then
+	dump_wire(wire1, "a->m")
+	dump_wire(wire2, "b->m")
+	dump_wire(wire3, "m->o")
+end
 
 tree:compile()
 tree:execute()
 
 function love.draw()
 	local lume = require "lume"
-	local width = love.graphics.getWidth() - 50
+	local w, h = love.graphics.getDimensions()
+	local width = w - 50
 	local pos = lume.pingpong(love.timer.getTime() / 3)
 	pos = lume.smooth(0, width, pos)
 	love.graphics.setColor(80, 80, 80, 255)
 	love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), 3)
 	love.graphics.setColor(220, 220, 220, 255)
 	love.graphics.rectangle("fill", pos, 0, 50, 3)
+
+	love.graphics.push()
+	love.graphics.origin()
+	love.graphics.translate(w/2, h/2)
+	for _, n in ipairs(tree) do
+		local position = tree.positions[n.uuid]
+		love.graphics.setColor(255, 255, 255, 255)
+		love.graphics.rectangle("fill", position.x, position.y, 150, 200)
+		love.graphics.setColor(200, 200, 200, 255)
+		love.graphics.rectangle("fill", position.x, position.y, 150, 25)
+		love.graphics.setColor(0, 0, 0, 255)
+		love.graphics.print(n.name, position.x + 6, position.y + 6)
+	end
+	love.graphics.pop()
 end
