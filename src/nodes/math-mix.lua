@@ -4,23 +4,23 @@ local cpml = require "cpml"
 
 return {
 	name     = "Mix",
-	category = "Color",
+	category = "Math",
 	new      =  function(tree, position)
 		return tree:add(
 			node {
 				name = "Mix",
 				inputs = {
 					plug("Factor", "number", 1),
-					plug("Value", "color", 2),
-					plug("Value", "color", 3)
+					plug("Value", "number", 2),
+					plug("Value", "number", 3)
 				},
 				outputs = {
-					plug("Value", "color", 1)
+					plug("Value", "number", 1)
 				},
 				values = {
 					0.5,
-					{ 255, 255, 255, 255 },
-					{ 255, 255, 255, 255 }
+					1.0,
+					1.0
 				},
 				evaluate = function(self)
 					self.computed[1] = cpml.color.lerp(

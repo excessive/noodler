@@ -15,73 +15,10 @@ function love.load()
 end
 
 local nodes = {
-	note = function(tree, position)
-		return tree:add(
-			node {
-				name = "Note"
-			},
-			position
-		)
-	end,
-	value = function(tree, position)
-		return tree:add(
-			node {
-				name = "Value",
-				outputs = {
-					plug("Value", "number", 1)
-				},
-				evaluate = function(self)
-					self.computed[1] = math.random()
-				end
-			},
-			position
-		)
-	end,
-	mix = function(tree, position)
-		return tree:add(
-			node {
-				name = "Mix",
-				inputs = {
-					plug("Factor", "number", 1),
-					plug("Value", "number", 2),
-					plug("Value", "number", 3)
-				},
-				outputs = {
-					plug("Value", "number", 1)
-				},
-				values = {
-					0.5,
-					0.0,
-					1.0
-				},
-				evaluate = function(self)
-					self.computed[1] = cpml.utils.lerp(
-						self.values[1],
-						self.values[2],
-						self.values[3]
-					)
-				end
-			},
-			position
-		)
-	end,
-	number_view = function(tree, position)
-		return tree:add(
-			node {
-				name = "Number View",
-				inputs = {
-					plug("Value", "number", 1)
-				},
-				values = {
-					0
-				},
-				evaluate = function(self)
-					print(self.values[1])
-				end
-			},
-			position
-		)
-	end
+	note = require("nodes.note").new,
+	value = require("nodes.input-number").new,
+	mix = require("nodes.math-mix").new,
+	number_view = require("nodes.view-number").new
 }
 
 local tree = graph()

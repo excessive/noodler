@@ -54,8 +54,8 @@ function node:to_string()
 	return string.format("Node: %s %s", self.name, self.uuid)
 end
 
-function node_mt.__call(_, ...)
-	return new(...)
+function node_mt.__call(_, params)
+	return new(params)
 end
 
 node_mt.__index    = node
