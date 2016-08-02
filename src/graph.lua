@@ -14,7 +14,7 @@ local function new()
 end
 
 function graph:add(node, position)
-	assert(cpml.vec2.is_vec2(position))
+	assert(cpml.vec2.is_vec2(position), "Node position must be of type vec2")
 	self.positions[node.uuid] = position
 	for _, plug in ipairs(node.inputs) do
 		plug.node = node
