@@ -3,6 +3,7 @@ local cpml  = require "cpml"
 local graph = require "graph"
 local utils = require "utils"
 local lume  = require "lume"
+local grid  = require "editgrid"
 
 function love.load()
 	local bg = cpml.color.linear_to_gamma { 40, 40, 40, 255 }
@@ -142,25 +143,28 @@ local wire_colors = {
 	quat    = {   0, 255, 120 }
 }
 
-local grid_position = cpml.vec2(0, 0)
-
 local new_wire = false
 local positions = {}
 local function draw_nodes(offset)
 	positions = {}
 	local dirty = false
+	local removed = {}
 
 	nk.stylePush(styles.node)
-	for _, n in ipairs(tree) do
+	for i, n in ipairs(tree) do
 		local position = tree.positions[n.uuid]
 
 		local px = love.window.toPixels
-		if nk.windowBegin(
-			n.uuid, n.name,
-			px(position.x) + offset.x, px(position.y) + offset.y,
-			px(250), px(200),
-			'title', 'movable')
-		then
+		local x, y = px(position.x) + offset.x, px(position.y) + offset.y
+		local w, h = px(250), px(200)
+
+		local flags = { "title", "movable"}
+
+		if nk.windowIsActive(n.uuid) then
+			table.insert(flags, "closable")
+		end
+
+		if nk.windowBegin(n.uuid, n.name, x, y, w, h, unpack(flags)) then
 			local ww, wh = nk.windowGetSize()
 			nk.windowSetSize(math.max(ww, px(150)), math.max(wh, px(150)))
 
@@ -235,14 +239,30 @@ local function draw_nodes(offset)
 					dirty = true
 				end
 			end
+		else
+			table.insert(removed, { index = i, node = n })
 		end
 		nk.windowEnd()
 	end
 	nk.stylePop()
 
+	for i=#removed, 1, -1 do
+		local n = removed[i].node
+		for _, input in ipairs(n.inputs) do
+			tree.connections[input] = nil
+			positions[input] = nil
+		end
+		for _, output in ipairs(n.outputs) do
+			tree.connections[output] = nil
+			positions[output] = nil
+		end
+		table.remove(tree, removed[i].index)
+	end
+
 	return dirty
 end
 
+local grid_position = cpml.vec2(0, 0)
 function love.update(dt)
 	nk.frameBegin()
 
@@ -278,6 +298,24 @@ function love.draw()
 	love.graphics.setColor(80, 80, 80, 255)
 	love.graphics.rectangle("fill", 0, 0, love.graphics.getDimensions())
 
+	local w, h = love.graphics.getDimensions()
+	local zoom = 1
+	grid.draw({
+		x  = (-grid_position.x) * (1/zoom),
+		y  = (-grid_position.y) * (1/zoom),
+		zoom = zoom,
+		sw = w,
+		sh = h
+	}, {
+		size = 50,
+		subdivisions = 5,
+		color = { 45, 45, 45 },
+		xColor = { 255, 0, 0 },
+		yColor = { 0, 255, 0 },
+		fadeFactor = 1.5,
+		textFadeFactor = 0.75,
+	})
+
 	-- foreground windows...
 	love.graphics.setColor(255, 255, 255, 255)
 	nk.draw()
@@ -290,7 +328,7 @@ function love.draw()
 	wires = lume.set(wires)
 
 	for _, v in ipairs(wires) do
-		if positions[v.output].connected then
+		if positions[v.output] and positions[v.input] and positions[v.input].connected then
 			draw_noodle(positions[v.input][1], positions[v.output][1], wire_colors[v.input.type] or wire_colors.default)
 		end
 	end
@@ -309,6 +347,7 @@ function love.keyreleased(key, scancode)
 	nk.keyreleased(key, scancode)
 end
 
+local move = false
 function love.mousepressed(x, y, button, istouch)
 	if nk.mousepressed(x, y, button, istouch) then
 		return
@@ -317,14 +356,35 @@ function love.mousepressed(x, y, button, istouch)
 	if new_wire then
 		new_wire = false
 	end
+
+	if not move then
+		-- move = cpml.vec2(x, y)
+		-- love.mouse.setRelativeMode(true)
+	end
 end
 
 function love.mousereleased(x, y, button, istouch)
-	nk.mousereleased(x, y, button, istouch)
+	if nk.mousereleased(x, y, button, istouch) then
+		return
+	end
+
+	if move then
+		love.mouse.setRelativeMode(false)
+		love.mouse.setPosition(move.x, move.y)
+		move = false
+	end
 end
 
 function love.mousemoved(x, y, dx, dy, istouch)
-	nk.mousemoved(x, y, dx, dy, istouch)
+	if move then
+		love.mouse.setPosition(0, 0)
+		grid_position = grid_position + cpml.vec2(dx, dy)
+		return
+	end
+
+	if nk.mousemoved(x, y, dx, dy, istouch) then
+		return
+	end
 end
 
 function love.textinput(text)
