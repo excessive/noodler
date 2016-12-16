@@ -5,6 +5,12 @@ local __NULL__ = function() end
 local node    = {}
 local node_mt = {}
 
+local function default_display(self, ui)
+	for k, v in ipairs(self.computed) do
+		ui.label(tostring(v))
+	end
+end
+
 local function new(params)
 	assert(type(params.name) == "string", "'name' parameter is required.")
 	if params.inputs then
@@ -19,6 +25,7 @@ local function new(params)
 		inputs   = params.inputs or {},
 		outputs  = params.outputs or {},
 		defaults = params.defaults or {},
+		display  = params.display or default_display,
 		computed = {},
 		evaluate = params.evaluate or __NULL__
 	}
