@@ -23,7 +23,7 @@ return {
 					1.0
 				},
 				evaluate = function(self)
-					self.computed[1] = cpml.color.lerp(
+					self.computed[1] = cpml.utils.lerp(
 						self.values[1],
 						self.values[2],
 						self.values[3]

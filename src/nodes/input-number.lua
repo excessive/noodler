@@ -14,11 +14,17 @@ return {
 				values = {
 					1
 				},
-				display = function(self)
-					love.graphics.setColor(255, 255, 255, 255)
-					love.graphics.rectangle("fill", 0, 0, self.size.x, self.size.y)
-					love.graphics.setColor(0, 0, 0, 255)
-					love.graphics.print(tostring(self.values[1]), 5)
+				display = function(self, ui)
+					local t = {
+						value = tostring(self.values[1]),
+						convert = tonumber
+					}
+					local state, changed = ui.edit("field", t)
+					-- todo: store temp, use state == "commited"
+					if changed then
+						self.values[1] = t.convert(t.value) or 0.0
+						return true
+					end
 				end,
 				evaluate = function(self)
 					self.computed[1] = self.values[1]
