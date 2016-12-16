@@ -26,6 +26,25 @@ function graph:add(node, position)
 	return node
 end
 
+local function validate(self, basis, node, depth)
+	depth = depth or 1
+	if node == basis then
+		if self.debug then
+			print(string.format("WARNING: Cycle detected between nodes %s and %s. Refusing to link.", basis.name, node.name))
+		end
+		return false
+	end
+	for _, plug in ipairs(node.inputs) do
+		local next_wire = self.connections[plug]
+		if next_wire then
+			if not validate(self, basis, next_wire.input.node, depth + 1) then
+				return false
+			end
+		end
+	end
+	return true
+end
+
 function graph:connect(from, to)
 	-- only allow connecting nodes of the same type, so we don't have to think
 	-- about implicit type conversions.
@@ -39,7 +58,17 @@ function graph:connect(from, to)
 		output = to
 	}
 
+	-- used for tracing wires
 	self.connections[to] = wire
+
+	-- we don't trace from here, but it's useful for the UI
+	self.connections[from] = wire
+
+	-- don't allow cyclical dependencies, they can't be resolved.
+	if not validate(self, to.node, from.node) then
+		self.connections[to] = nil
+		self.connections[from] = nil
+	end
 
 	return wire
 end
