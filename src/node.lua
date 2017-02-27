@@ -7,7 +7,7 @@ local node_mt = {}
 
 local function default_display(self, ui)
 	for k, v in ipairs(self.computed) do
-		ui.label(tostring(v))
+		ui:label(tostring(v))
 	end
 end
 

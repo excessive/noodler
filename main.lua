@@ -18,7 +18,7 @@ local nodes = {
 }
 
 local tree = graph()
-tree.debug = true
+tree.debug = false
 
 local a = nodes.value(tree, cpml.vec2(-400, -250))
 a.values[1] = 0.0
@@ -61,12 +61,205 @@ end
 -- tree:execute()
 
 local nk = require "nuklear"
-nk.init()
+local ui = nk.newUI()
+local overlay = nk.newUI()
 
-local combo = {
-	value = 1,
-	items = { 'A', 'B', 'C' }
+local default_font = love.graphics.newFont("assets/NotoSans-Regular.ttf", love.window.toPixels(12))
+local styles = {
+	line_height = 1.35,
+	button_width = love.window.toPixels(20),
+	node = {
+		font = default_font,
+		text = {
+			["color"] = "#000000ff",
+		},
+		window = {
+			["padding"]          = { x = love.window.toPixels(2), y = love.window.toPixels(2) },
+			["background"]       = "#ddddddff",
+			["fixed background"] = "#ddddddff",
+			["scaler"]           = "#222222ff"
+		},
+		label = {
+			["padding"]      = { x = 0, y = 0 }
+		},
+		button = {
+			["padding"]      = { x = 0, y = 0 },
+			["rounding"]     = 0,
+			["normal"]       = "#00000000",
+			["border color"] = "#00000000",
+			["hover"]        = "#55555555",
+			["active"]       = "#00000055",
+		}
+	}
 }
+
+local wire_colors = {
+	default = { 255, 255, 255 },
+	number  = {   0, 120, 255 },
+	vec3    = { 255, 120,   0 },
+	quat    = {   0, 255, 120 }
+}
+
+local positions = {}
+local function remove_node(tree, node, i)
+	for _, input in ipairs(node.inputs) do
+		local con = tree.connections[input]
+		if con then
+			tree.connections[con.input] = nil
+		end
+		tree.connections[input] = nil
+		positions[input] = nil
+	end
+	for _, output in ipairs(node.outputs) do
+		local con = tree.connections[output]
+		if con then
+			tree.connections[con.output] = nil
+		end
+		tree.connections[output] = nil
+		positions[output] = nil
+	end
+	table.remove(tree, i)
+end
+
+local new_wire = false
+local function draw_nodes(offset)
+	positions = {}
+	local dirty = false
+	local removed = {}
+
+	ui:stylePush(styles.node)
+	for i, n in ipairs(tree) do
+		local position = tree.positions[n.uuid]
+
+		local px = love.window.toPixels
+		local x, y = px(position.x) + offset.x, px(position.y) + offset.y
+		local w, h = px(250), px(200)
+
+		local flags = { "title", "movable"}
+
+		if ui:windowIsActive(n.uuid) then
+			table.insert(flags, "closable")
+		end
+
+		if ui:windowBegin(n.uuid, n.name, x, y, w, h, unpack(flags)) then
+			local ww, wh = ui:windowGetSize()
+			ui:windowSetSize(math.max(ww, px(150)), math.max(wh, px(150)))
+
+			local bw = styles.button_width
+			local lw = select(3, ui:windowGetContentRegion()) / 2 - bw - px(8)
+			local height = styles.node.font:getHeight() * styles.line_height
+			ui:layoutRow("static", height, { bw, lw, lw, bw })
+			for i = 1, math.max(#n.inputs, #n.outputs) do
+				local input = n.inputs[i] or false
+				if input then
+					local connected = tree.connections[input]
+					if ui:button("", connected and "circle solid" or "circle outline") then
+						if connected then
+							tree.connections[connected.input] = nil
+							tree.connections[connected.output] = nil
+							connected = false
+						elseif new_wire then
+							connected = tree:connect(new_wire.plug, input)
+							new_wire = false
+							if connected then
+								dirty = true
+							end
+						end
+					end
+					if connected then
+						local x, y = ui:widgetPosition()
+						positions[input] = {
+							cpml.vec2(x - styles.button_width + px(5), y + height / 2),
+							connected = connected and true or false
+						}
+
+						ui:label(input.name, "left")
+					else
+						local t = {
+							value = tostring(n.values[i]),
+							convert = tonumber
+						}
+						local state, changed = ui:edit("field", t)
+						-- todo: store temp, use committed state
+						if changed then
+							n.values[i] = t.convert(t.value) or 0.0
+							dirty = true
+						end
+					end
+				else
+					ui:spacing(2)
+				end
+
+				local output = n.outputs[i] or false
+				if output then
+					ui:label(output.name, "right")
+					local connected = tree.connections[output]
+					if ui:button("", connected and "circle solid" or "circle outline") then
+						local x, y = ui:widgetPosition()
+						new_wire = {
+							plug     = output,
+							position = cpml.vec2(x + px(1), y - height / 2 - px(4))
+						}
+					end
+					local x, y = ui:widgetPosition()
+					positions[output] = {
+						cpml.vec2(x + px(1), y - height / 2 - px(4)),
+						connected = connected and true or false
+					}
+				else
+					ui:spacing(2)
+				end
+			end
+			ui:layoutRow("dynamic", 30, 1)
+			if n.display then
+				if n:display(ui) then
+					dirty = true
+				end
+			end
+		else
+			table.insert(removed, { index = i, node = n })
+		end
+		ui:windowEnd()
+	end
+	ui:stylePop()
+
+	for i=#removed, 1, -1 do
+		remove_node(tree, removed[i].node, removed[i].index)
+		dirty = true
+	end
+
+	return dirty
+end
+
+local grid_position = cpml.vec2(0, 0)
+function love.update(dt)
+	ui:frameBegin()
+
+	ui:translate(grid_position:unpack())
+	local size = cpml.vec2(love.graphics.getDimensions())
+	local offset = size / 2 + grid_position
+	local dirty = draw_nodes(offset)
+	ui:frameEnd()
+
+	overlay:frameBegin()
+	if overlay:windowBegin("toolbar", 0, 0, size.x, 40) then
+		overlay:layoutRow("dynamic", 30, 3)
+		if overlay:button("Add Node") then
+			nodes.mix(tree, cpml.vec2())
+		end
+		overlay:spacing(1)
+		if overlay:button("Build & Run") then
+			dirty = true
+		end
+	end
+	overlay:windowEnd()
+	overlay:frameEnd()
+
+	if dirty then
+		tree:compile()
+		tree:execute()
+	end
+end
 
 local function draw_noodle(first, last, color)
 	-- 1-2 is mega-curvy, 0 is straight, >2 is a gentle curve.
@@ -107,192 +300,10 @@ local function draw_noodle(first, last, color)
 	love.graphics.line(bezier:render(curviness == 0 and 1 or 4))
 end
 
-local default_font = love.graphics.newFont("assets/NotoSans-Regular.ttf", love.window.toPixels(12))
-local styles = {
-	line_height = 1.35,
-	button_width = love.window.toPixels(20),
-	node = {
-		font = default_font,
-		text = {
-			["color"] = "#000000ff",
-		},
-		window = {
-			["padding"]          = { x = love.window.toPixels(2), y = love.window.toPixels(2) },
-			["background"]       = "#ddddddff",
-			["fixed background"] = "#ddddddff",
-			["scaler"]           = "#222222ff"
-		},
-		label = {
-			["padding"]      = { x = 0, y = 0 }
-		},
-		button = {
-			["padding"]      = { x = 0, y = 0 },
-			["rounding"]     = 0,
-			["normal"]       = "#00000000",
-			["border color"] = "#00000000",
-			["hover"]        = "#55555555",
-			["active"]       = "#00000055",
-		}
-	}
-}
-
-local wire_colors = {
-	default = { 255, 255, 255 },
-	number  = {   0, 120, 255 },
-	vec3    = { 255, 120,   0 },
-	quat    = {   0, 255, 120 }
-}
-
-local new_wire = false
-local positions = {}
-local function draw_nodes(offset)
-	positions = {}
-	local dirty = false
-	local removed = {}
-
-	nk.stylePush(styles.node)
-	for i, n in ipairs(tree) do
-		local position = tree.positions[n.uuid]
-
-		local px = love.window.toPixels
-		local x, y = px(position.x) + offset.x, px(position.y) + offset.y
-		local w, h = px(250), px(200)
-
-		local flags = { "title", "movable"}
-
-		if nk.windowIsActive(n.uuid) then
-			table.insert(flags, "closable")
-		end
-
-		if nk.windowBegin(n.uuid, n.name, x, y, w, h, unpack(flags)) then
-			local ww, wh = nk.windowGetSize()
-			nk.windowSetSize(math.max(ww, px(150)), math.max(wh, px(150)))
-
-			local bw = styles.button_width
-			local lw = select(3, nk.windowGetContentRegion()) / 2 - bw - px(8)
-			local height = styles.node.font:getHeight() * styles.line_height
-			nk.layoutRow("static", height, { bw, lw, lw, bw })
-			for i = 1, math.max(#n.inputs, #n.outputs) do
-				local input = n.inputs[i] or false
-				if input then
-					local connected = tree.connections[input]
-					if nk.button("", connected and "circle solid" or "circle outline") then
-						if connected then
-							tree.connections[connected.input] = nil
-							tree.connections[connected.output] = nil
-							connected = false
-						elseif new_wire then
-							connected = tree:connect(new_wire.plug, input)
-							new_wire = false
-							if connected then
-								dirty = true
-							end
-						end
-					end
-					if connected then
-						local x, y = nk.widgetPosition()
-						positions[input] = {
-							cpml.vec2(x - styles.button_width + px(5), y + height / 2),
-							connected = connected and true or false
-						}
-
-						nk.label(input.name, "left")
-					else
-						local t = {
-							value = tostring(n.values[i]),
-							convert = tonumber
-						}
-						local state, changed = nk.edit("field", t)
-						-- todo: store temp, use committed state
-						if changed then
-							n.values[i] = t.convert(t.value) or 0.0
-							dirty = true
-						end
-					end
-				else
-					nk.spacing(2)
-				end
-
-				local output = n.outputs[i] or false
-				if output then
-					nk.label(output.name, "right")
-					local connected = tree.connections[output]
-					if nk.button("", connected and "circle solid" or "circle outline") then
-						local x, y = nk.widgetPosition()
-						new_wire = {
-							plug     = output,
-							position = cpml.vec2(x + px(1), y - height / 2 - px(4))
-						}
-					end
-					local x, y = nk.widgetPosition()
-					positions[output] = {
-						cpml.vec2(x + px(1), y - height / 2 - px(4)),
-						connected = connected and true or false
-					}
-				else
-					nk.spacing(2)
-				end
-			end
-			nk.layoutRow("dynamic", 30, 1)
-			if n.display then
-				if n:display(nk) then
-					dirty = true
-				end
-			end
-		else
-			table.insert(removed, { index = i, node = n })
-		end
-		nk.windowEnd()
-	end
-	nk.stylePop()
-
-	for i=#removed, 1, -1 do
-		local n = removed[i].node
-		for _, input in ipairs(n.inputs) do
-			tree.connections[input] = nil
-			positions[input] = nil
-		end
-		for _, output in ipairs(n.outputs) do
-			tree.connections[output] = nil
-			positions[output] = nil
-		end
-		table.remove(tree, removed[i].index)
-	end
-
-	return dirty
-end
-
-local grid_position = cpml.vec2(0, 0)
-function love.update(dt)
-	nk.frameBegin()
-
-	local size = cpml.vec2(love.graphics.getDimensions())
-	local offset = size / 2 + grid_position
-	local dirty = draw_nodes(offset)
-
-	if nk.windowBegin("toolbar", 0, 0, size.x, 40) then
-		nk.layoutRow("dynamic", 30, 3)
-		if nk.button("Add Node") then
-			nodes.mix(tree, cpml.vec2())
-		end
-		nk.spacing(1)
-		if nk.button("Build & Run") then
-			dirty = true
-		end
-	end
-	nk.windowEnd()
-
-	if dirty then
-		tree:compile()
-		tree:execute()
-	end
-
-	nk.frameEnd()
-end
-
 function love.draw()
 	-- no super thin lines on retina displays
 	love.graphics.setLineWidth(love.window.getPixelScale())
+	love.graphics.setLineStyle("rough")
 
 	-- background (don't just draw on backbuffer, screws with blending)
 	love.graphics.setColor(80, 80, 80, 255)
@@ -317,8 +328,8 @@ function love.draw()
 	})
 
 	-- foreground windows...
-	love.graphics.setColor(255, 255, 255, 255)
-	nk.draw()
+	ui:draw()
+	overlay:draw()
 
 	-- draw the connecting wires
 	local wires = {}
@@ -329,27 +340,30 @@ function love.draw()
 
 	for _, v in ipairs(wires) do
 		if positions[v.output] and positions[v.input] and positions[v.input].connected then
-			draw_noodle(positions[v.input][1], positions[v.output][1], wire_colors[v.input.type] or wire_colors.default)
+			draw_noodle(positions[v.input][1] + grid_position, positions[v.output][1] + grid_position, wire_colors[v.input.type] or wire_colors.default)
 		end
 	end
 
 	-- if you're dragging out a node, show it in yellow
 	if new_wire then
-		draw_noodle(new_wire.position, cpml.vec2(love.mouse.getPosition()), { 255, 255, 0 })
+		draw_noodle(new_wire.position + grid_position, cpml.vec2(love.mouse.getPosition()), { 255, 255, 0 })
 	end
 end
 
 function love.keypressed(key, scancode, isrepeat)
-	nk.keypressed(key, scancode, isrepeat)
+	ui:keypressed(key, scancode, isrepeat)
 end
 
 function love.keyreleased(key, scancode)
-	nk.keyreleased(key, scancode)
+	ui:keyreleased(key, scancode)
 end
 
 local move = false
 function love.mousepressed(x, y, button, istouch)
-	if nk.mousepressed(x, y, button, istouch) then
+	if overlay:mousepressed(x, y, button, istouch) then
+		return
+	end
+	if ui:mousepressed(x, y, button, istouch) then
 		return
 	end
 
@@ -358,13 +372,16 @@ function love.mousepressed(x, y, button, istouch)
 	end
 
 	if not move then
-		-- move = cpml.vec2(x, y)
-		-- love.mouse.setRelativeMode(true)
+		move = cpml.vec2(x, y)
+		love.mouse.setRelativeMode(true)
 	end
 end
 
 function love.mousereleased(x, y, button, istouch)
-	if nk.mousereleased(x, y, button, istouch) then
+	if overlay:mousereleased(x, y, button, istouch) then
+		return
+	end
+	if ui:mousereleased(x, y, button, istouch) then
 		return
 	end
 
@@ -382,15 +399,18 @@ function love.mousemoved(x, y, dx, dy, istouch)
 		return
 	end
 
-	if nk.mousemoved(x, y, dx, dy, istouch) then
+	if overlay:mousemoved(x, y, dx, dy, istouch) then
+		return
+	end
+	if ui:mousemoved(x, y, dx, dy, istouch) then
 		return
 	end
 end
 
 function love.textinput(text)
-	nk.textinput(text)
+	ui:textinput(text)
 end
 
 function love.wheelmoved(x, y)
-	nk.wheelmoved(x, y)
+	ui:wheelmoved(x, y)
 end

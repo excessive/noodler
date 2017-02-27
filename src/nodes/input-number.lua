@@ -19,7 +19,7 @@ return {
 						value = tostring(self.values[1]),
 						convert = tonumber
 					}
-					local state, changed = ui.edit("field", t)
+					local state, changed = ui:edit("field", t)
 					-- todo: store temp, use state == "commited"
 					if changed then
 						self.values[1] = t.convert(t.value) or 0.0

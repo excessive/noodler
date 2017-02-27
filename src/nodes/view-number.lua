@@ -15,7 +15,7 @@ return {
 					0
 				},
 				display = function(self, ui)
-					ui.label(string.format("%5.5f", self.values[1]))
+					ui:label(string.format("%5.5f", self.values[1]))
 				end
 			},
 			position
